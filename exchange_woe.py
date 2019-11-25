@@ -29,7 +29,7 @@ class Fill_WOE_exchange:
         
     
     
-    def get_small_cover_lst(self, cover_rate=0.04):
+    def get_small_cover_lst(self, cover_rate=0.05):
         '''
         小于cover_rate的字段，需要填充处理
         '''
@@ -69,8 +69,8 @@ class Fill_WOE_exchange:
         '''
         print(len(self.use_lst))
         use_cut_lst = {}
-        left_num = -10000000
-        right_num = 10000000
+        left_num = -float(np.inf)
+        right_num = float(np.inf)
         for name in self.use_lst:
             x1 = df[(df[name].notnull())&(df[self.type_train]=='ins')][[name]]
             y1 = df[(df[name].notnull())&(df[self.type_train]=='ins')][self.y]
