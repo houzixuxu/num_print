@@ -1,2 +1,2 @@
-# num_print
-打印1-10
+# LR的EDA，woe，写报告
+
