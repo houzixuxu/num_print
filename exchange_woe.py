@@ -4,6 +4,8 @@ class Fill_WOE_exchange:
     use_lst：   应用的数值型字段列表
     type_train：根据某种规则得到的 ins, oot, oot2, oot3
     y：         指定的label
+    
+    运行main函数，获得常规用法
     '''
     def __init__(self, df, use_lst, type_train, y):
         self.df = df
@@ -14,19 +16,28 @@ class Fill_WOE_exchange:
         #self.df_fill = self.fill_missing_data()
         
     def main(self):
+        #s = '''
+        
         #获得需要填充的字段列表
         self.fill_lst = self.get_small_cover_lst(0.05)
+        
         #对部分字段进行填充
         self.df_fill, self.fill_na_dic = self.fill_missing_data(self.fill_lst)
+        
         #xgboost获取分箱规则
         self.use_cut_lst = self.get_tree_cut_line(self.df_fill)
+        
         #用分箱规则分箱，得到self.df_bin
         self.df_bin = self.get_bin_label(self.df_fill, self.use_cut_lst)
+        
         #获得每一个分箱的woe值，并存成字典woe_dic
         self.woe_dic = self.get_woe_dic(self.df_bin[self.df_bin[self.type_train]=='ins'])
+        
         #用woe_dic，获得woe转换后的DataFrame
         self.df_woe = self.get_woe_bin(self.df_bin, self.woe_dic)
         
+        #'''
+        #return s
     
     
     def get_small_cover_lst(self, cover_rate=0.05):
@@ -76,10 +87,10 @@ class Fill_WOE_exchange:
             y1 = df[(df[name].notnull())&(df[self.type_train]=='ins')][self.y]
             x2 = df[(df[name].notnull())&(df[self.type_train]=='oot')][[name]]
             y2 = df[(df[name].notnull())&(df[self.type_train]=='oot')][self.y]
-            min_num = x1.shape[0]/300
+            min_num = x1.shape[0]/200
             print(min_num)
             print(name, x1.shape, x2.shape)
-            if len(Counter(x1[name])) <= 4:
+            if len(Counter(x1[name])) <= 3:
                 cut_line = sorted([i-0.1 for i in Counter(x1[name]).keys()])
                 cut_line[0] = left_num
                 cut_line.append(right_num)
@@ -89,18 +100,23 @@ class Fill_WOE_exchange:
                 #55以下 深度1
                 #68以下 深度2
                 #75以下 深度3
-                sample_wei=28
-                if r_1 < 55:
+                
+                #样本比例权重
+                sample_wei=len(y1)//sum(y1)+2
+                print(sample_wei)
+                
+                
+                if r_1 < .55:
                     depth = 1
-                    ga = 10
+                    ga = 11
                     min_wei = min_num
-                elif r_1 < 68:
+                elif r_1 < .65:
                     depth = 2
-                    ga = 120
+                    ga = 110
                     min_wei = min_num*1.3
                 else:
                     depth = 3
-                    ga = 130
+                    ga = 100
                     min_wei = min_num*1.2
 
                 xgb = XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,
