@@ -12,16 +12,14 @@ class Get_res_DataFrame:
     月份区分  第一个函数 输入df_new ， df_old， month
     '''
     
-    def __init__(self, lr, df, df_bin, df_woe, use_lst,woe_dic,type_train='type_new', cate2='customer_type_old', mon_name='month', y='is_7_p'):
+    def __init__(self, lr, df, df_bin, df_woe, use_lst, woe_dic, type_train='type_train',  y='is_7_p'):
         self.df = df
         self.df_bin = df_bin
         self.df_woe = df_woe
         self.use_lst = use_lst
         self.woe_dic = woe_dic
         self.type_train = type_train
-        self.cate2 = cate2
         self.model = lr
-        self.mon_name = mon_name
         self.y = y
     
     def main(self):
@@ -36,34 +34,43 @@ class Get_res_DataFrame:
     #df, df_woe, use_lst, cal_iv, type_train,cal_psi ,lr
     def get_2_1_imp(self, df):
         d1 = DataFrame(index=self.use_lst)
-        #print(Counter(self.df_woe[y]))
-        d1['auc'] = [0.5+abs(0.5-roc_auc_score(df[self.y], df[i])) for i in self.use_lst]
-        d1['ks'] = [float(ks_calc_cross(df, name, self.y)[0]['gap']) for name in self.use_lst]
-        d1['ins_iv'] = [cal_iv(df[df[self.type_train]=='ins'], name, self.y) for name in self.use_lst]
-        d1['oot_iv'] = [cal_iv(df[df[self.type_train]=='oot'], name, self.y) for name in self.use_lst]
-        d1['coef'] = self.model.coef_[0]
-        d1['psi'] = [cal_psi(df, name) for name in self.use_lst]
-        d1['vif'] = [variance_inflation_factor(np.matrix(df[self.use_lst]), i) for i in range(len(self.use_lst))]
+        cover_dic = dict(df[use_lst].notnull().sum())
+        d1['auc'] = [round(0.5+abs(0.5-roc_auc_score(df[self.y], df[i])), 3) for i in self.use_lst]
+        d1['ks'] = [round(float(ks_calc_cross(df, name, self.y)[0]['gap']), 3) for name in self.use_lst]
+        d1['ins_iv'] = [round(cal_iv(df[df[self.type_train]=='ins'], name, self.y), 3) for name in self.use_lst]
+        d1['oot_iv'] = [round(cal_iv(df[df[self.type_train]=='oot'], name, self.y), 3) for name in self.use_lst]
+        
+        d1['coef'] = [round(i, 4) for i in self.model.coef_[0]]
+        #d1['importance'] = self.model.feature_importances_
+        d1 = d1.reset_index()
+        d1['psi'] = [round(cal_psi(df, name), 5) for name in self.use_lst]
+        d1['vif'] = [round(variance_inflation_factor(np.matrix(df[self.use_lst]), i),3) for i in range(len(self.use_lst))]
         #d1['fill_missing_data'] = [fill_na_dic[name] for name in self.use_lst]
-        d2_1 = d1.reset_index()
-        return d2_1
+        #d2_1 = d1
+        d1.index = range(1, d1.shape[0]+1)
+        return d1
     
     #df, use_lst, type_train
     def get_2_2_des(self):
         df = self.df[self.df[self.type_train].isin(['ins', 'oot'])]
         df_data_des = df[self.use_lst].describe().T 
+        
+        
         cover_dic = dict(df[use_lst].notnull().sum())
+        
         df_data_des = df_data_des.reset_index()
-        df_data_des['cover'] = df_data_des['index'].apply(lambda x: cover_dic[x]/df.shape[0])
+        df_data_des['cover'] = df_data_des['index'].apply(lambda x: round(cover_dic[x]/df.shape[0], 4))
         df_data_des.index = df_data_des['index']
         df_data_des.drop(columns=['index', 'count'], inplace=True)
         d2_2 = df_data_des.reset_index()
+        d2_2.index = range(1, d2_2.shape[0]+1)
         return d2_2
     
     #df_woe, use_lst
     def get_2_3_corr(self):
         corr = np.corrcoef(np.array(self.df_woe[self.use_lst]).T)
         d2_3 = DataFrame(corr, columns=range(len(self.use_lst)), index=self.use_lst).reset_index()
+        d2_3.index = range(1, d2_3.shape[0]+1)
         return d2_3
     
     #df_bin, use_lst, #type_lst#, type_train, woe_dic
@@ -109,7 +116,6 @@ class Get_res_DataFrame:
         cut_line = list(np.percentile(list(df_tmp[df_tmp['category']==base_cut][y]), range(1, 101,10)))
         #np.percentile出来的是np.array格式
         cut_line[0] = -float('inf')
-        
         cut_line.append(float('inf'))
         df_tmp['bins'] = pd.cut(df_tmp[y], bins=cut_line)
         df_tmp['count'] = [1 for i in range(df_tmp.shape[0])]
@@ -117,7 +123,9 @@ class Get_res_DataFrame:
         
         ks_lst = []
         for i in sorted(Counter(df_tmp['category']).keys()):
+            #print(df_tmp[df_tmp['category']==i].shape)
             lst = list(ks_calc_cross(df_tmp[df_tmp['category']==i], 'bins', 'bad')[1]['gap'])
+            #print(lst)
             while len(lst) < 10:
                 lst = [0]+lst
             ks_lst.extend(lst)
@@ -127,11 +135,41 @@ class Get_res_DataFrame:
         df = df.reset_index()
         df['bad_rate'] = df['bad']/df['count']
         df['ks'] = ks_lst
-        print(df)
+        #print(df)
         for i in ['bad', 'count', 'bad_rate', 'ks']:
             df[i] = df[i].astype(float)
         #df[['bad', 'count', 'bad_rate', 'ks']] = df[['bad', 'count', 'bad_rate', 'ks']].astype(float)
         #df = df.astype(str)
         df[['bad', 'count', 'bad_rate', 'ks'] ]= df[['bad', 'count', 'bad_rate', 'ks']].fillna(0)
+        #添加几行用来画画
+        #
+        #n = len(Counter(df_tmp[cate]))
+        #length = df.shape[0]//n
+        #for i in range(n):
+        #    
+        #df[:length]
+        #print(df)
+        #
+        df.index = range(1, df.shape[0]+1)
         return df
         
+if __name__ == '__main__':
+    
+    s = '''
+           c=Get_res_DataFrame(lr, a.df, a.df_bin, df_pb_woe, use_lst,a.woe_dic, type_train='type_train', y='is_7_p')
+           d2_1 = c.get_2_1_imp(df_pb_woe[df_pb_woe['customer_type_old']=='old_customer'])
+           d2_2 = c.get_2_2_des()
+           d2_3 = c.get_2_3_corr()
+           
+           d3 = c.get_bin_ins_oot(type_lst=['ins', 'oot'])
+           d4 = c.get_categories_df(df_pb_all,cate='type_train',base_cut='ins', y='final_score')
+           #
+           df_new = df_pb_all[df_pb_all['customer_type_old']=='new_customer']
+           df_old = df_pb_all[df_pb_all['customer_type_old']=='old_customer']
+           #
+           d5_1 = c.get_categories_df(df_new,cate='type_train',base_cut='ins', y='final_score')
+           d5_2 = c.get_categories_df(df_old,cate='type_train',base_cut='ins', y='final_score')
+           
+           d6_1 = c.get_categories_df(df_new,cate='month',base_cut='0', y='final_score')
+           d6_2 = c.get_categories_df(df_old,cate='month',base_cut='0', y='final_score')
+        '''
