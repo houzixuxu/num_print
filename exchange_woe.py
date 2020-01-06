@@ -1,3 +1,12 @@
+import gc
+import copy
+from  xgboost import XGBClassifier
+import pandas as pd
+import numpy as np
+from collections import Counter
+
+
+
 class Fill_WOE_exchange:
     '''
     df：        输入为DateFrame格式
@@ -87,7 +96,7 @@ class Fill_WOE_exchange:
             y1 = df[(df[name].notnull())&(df[self.type_train]=='ins')][self.y]
             x2 = df[(df[name].notnull())&(df[self.type_train]=='oot')][[name]]
             y2 = df[(df[name].notnull())&(df[self.type_train]=='oot')][self.y]
-            min_num = x1.shape[0]/200
+            min_num = x1.shape[0]/100
             print(min_num)
             print(name, x1.shape, x2.shape)
             if len(Counter(x1[name])) <= 3:
@@ -102,8 +111,9 @@ class Fill_WOE_exchange:
                 #75以下 深度3
                 
                 #样本比例权重
-                sample_wei=len(y1)//sum(y1)+2
-                print(sample_wei)
+                sample_wei=len(y1)//sum(y1)
+                print('比例权重',sample_wei)
+                #print('样本权重',min_num)
                 
                 
                 if r_1 < .55:
@@ -112,13 +122,13 @@ class Fill_WOE_exchange:
                     min_wei = min_num
                 elif r_1 < .65:
                     depth = 2
-                    ga = 110
-                    min_wei = min_num*1.3
+                    ga = 120
+                    min_wei = min_num*1.5
                 else:
                     depth = 3
                     ga = 100
-                    min_wei = min_num*1.2
-
+                    min_wei = min_num*1.4
+                print('样本权重',min_wei)
                 xgb = XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,
                        colsample_bynode=1, colsample_bytree=1, gamma=ga, learning_rate=0.1,
                        max_delta_step=0, max_depth=depth, min_child_weight=min_wei, missing=np.nan,
@@ -131,6 +141,9 @@ class Fill_WOE_exchange:
                 cut_line = sorted(xgb.get_booster().trees_to_dataframe()['Split'].dropna())
                 cut_line = [left_num] + cut_line + [right_num]
                 cut_line = sorted(set(cut_line))
+                del xgb
+                gc.collect()
+                
             use_cut_lst[name] = cut_line
             print(len(cut_line)-1)
         return use_cut_lst
@@ -144,10 +157,11 @@ class Fill_WOE_exchange:
             df[name] = pd.cut(df[name], bins=use_cut_lst[name])
             df[name] = df[name].astype(str)
            # df1[name] = pd.cut(df[name], bins=use_cut_lst[name])
-            d_tmp = df[df[self.type_train]=='ins'].groupby(name).sum()[[self.y, 'count']].reset_index()
-            d_tmp['bad_rate'] = d_tmp[self.y]/d_tmp['count']
-            d_tmp.sort_values(by='bad_rate', inplace=True)
-            print(d_tmp)
+            for i in ['ins', 'oot']:
+                d_tmp = df[df[self.type_train]==i].groupby(name).sum()[[self.y, 'count']].reset_index()
+                d_tmp['bad_rate'] = d_tmp[self.y]/d_tmp['count']
+                d_tmp.sort_values(by='bad_rate', inplace=True)
+                print(d_tmp)
         return df
         
      #得到woe字典
