@@ -2,6 +2,7 @@ import copy
 import pandas as pd
 import numpy as np
 from pandas import DataFrame
+from collections import Counter
 from sklearn.metrics import roc_auc_score, roc_curve
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
