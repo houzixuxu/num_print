@@ -92,7 +92,13 @@ class Get_res_DataFrame:
                 dd_tmp = dd_tmp.reset_index()
                 dd_tmp['woe'] = dd_tmp[name].apply(lambda x: self.woe_dic[name][x])
                 #dd_tmp['ks']
+                #print(dd_tmp)
                 dd_tmp.sort_values(by='bad_rate', inplace=True)
+                
+                dd_tmp['sort_key'] = [float(i.split(',')[0][1:]) if i[0]=='(' else float('inf') for i in dd_tmp[name]]
+                #print(dd_tmp)
+                dd_tmp.sort_values(by='sort_key', inplace=True)
+                dd_tmp.drop(columns=['sort_key'], inplace=True)
                 name1 = '-'
                 d = DataFrame(columns=['slice', 'bad', 'count', 'bad_rio', 'woe'],
                                   data=[[str(name1), '-', '-', '-','-']]+dd_tmp.values.tolist()[:], 
@@ -102,9 +108,11 @@ class Get_res_DataFrame:
                 else:
                     split_name = str(type_lst[loc-1])+'<-->'+str(i)
                 d[split_name] = [split_name for i in range(d.shape[0])]
-                d = d[[split_name, 'slice', 'bad', 'count', 'bad_rio', 'woe' ]]         
+                #d['sort_key'] = [float(i.split(',')[0][1:]) if i[0]=='(' else float('inf') for i in d['slice']]
+                #print(d)
+                #d.sort_values(by='sort_key', inplace=True)
+                d = d[[split_name, 'slice', 'bad', 'count', 'bad_rio', 'woe' ]]                 
                 lst.append(d)
-            #res.append(d)
             res.append(lst)  
         return pd.concat((pd.concat(i for i in res[i]) for i in range(len(type_lst))),axis=1)
     
