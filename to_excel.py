@@ -4,6 +4,10 @@
 #2. 多个DataFrame 横向铺满/纵向铺满 附加title
 #3. 多个DataFrame 横向铺满 并画图   附加title
 #4. 颜色 格式
+import pandas as pd
+from collections import Counter
+
+
 class To_Excel:
     def __init__(self, file_path):
         self.file_path = file_path
@@ -46,4 +50,3 @@ class To_Excel:
         for i in df_lst:
             i.to_excel(self.writer, sheet_name=sheet_name, startrow=star_row, startcol=star_col)
             star_col+=9+i.shape[1]
-    
