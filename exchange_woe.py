@@ -46,7 +46,8 @@ class Fill_WOE_exchange:
         self.df_woe = self.get_woe_bin(self.df_bin, self.woe_dic)
         
         #'''
-        #return s
+        #lr to sql
+        self.s = self.lr_2_sql(self.woe_dic,self.use_lst, coef_dic={})
     
     
     def get_small_cover_lst(self, cover_rate=0.05):
@@ -208,3 +209,32 @@ class Fill_WOE_exchange:
         #df_tmp['iv'] = (df_tmp[y]-df_tmp['good']) * df_tmp['woe']
    #     woe_dic = dict(zip(list(df_tmp.index), list(df_tmp['woe'])))
         return list(df_tmp['woe'])
+
+
+    def lr_2_sql(woe_dic, use_lst,coef_dic={}):
+        #for i in use
+        #d.setdefault(1)
+        s = '556'
+        for name in use_lst:
+            coef_dic.setdefault(name, 1)
+            s += '+\ncase\n'
+            for i in woe_dic[name]:
+                num = int(round(woe_dic[name][i]*coef_dic[name]*-72.1))    #每个箱子对应的 分数值，可以自己定义，*coef*-72.1
+                if i == 'nan':
+                    s += '  when {0} is null then {1}\n'.format(name,  num)
+                elif '-inf' in i:
+                    a1 = float(i.split(',')[-1][:-1])
+                    s += '  when {0} <= {1} then {2}\n'.format(name, a1, num)
+                elif 'inf' in i:
+                    a2 = float(i.split(',')[0][1:])
+                    s += '  when {0} > {1} then {2}\n'.format(name, a2, num)
+                else:
+                    a3, a4 = i.split(',')
+                    a3 = a3[1:]
+                    a4 = float(a4[:-1])
+                    s += '  when {0} <= {1} and {2} > {3} then {4}\n'.format(name, a4, name, a3, num)
+                #print('when name > {0} then {1}'.format(i, num))
+                #print(i)
+            s += 'end\n'
+        #print(s)
+        return s
